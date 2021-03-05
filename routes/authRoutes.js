@@ -1,144 +1,133 @@
-const passport = require("passport");
-var User = require("../models/User");
-const keys = require("../config/keys");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-var nodemailer = require('nodemailer');
-const client = require("twilio")(keys.accountSID, keys.authToken);
+const passport = require('passport')
+var User = require('../models/User')
+const keys = require('../config/keys')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
+var nodemailer = require('nodemailer')
+const client = require('twilio')(keys.accountSID, keys.authToken)
 module.exports = (app) => {
   //Sign up
-  app.get("/auth/signup", (req, res) => {
+  app.get('/auth/signup', (req, res) => {
     if (req.body.phonenumber && req.body.name && req.body.password) {
       client.verify
         .services(keys.serviceID)
         .verifications.create({
           to: `+977${req.body.phonenumber}`,
-          channel: "sms",
+          channel: 'sms',
         })
         .then((data) => {
           res.status(200).send({
-            message:
-              "Verification code has been sent to" +
-              `977${req.body.phonenumber}`,
+            message: 'Verification code has been sent to' + `977${req.body.phonenumber}`,
             phonenumber: req.body.phonenumber,
             data,
-          });
-        });
+          })
+        })
     } else {
       res.status(400).send({
-        message: "Wrong phone number.",
+        message: 'Wrong phone number.',
         phonenumber: req.body.phonenumber,
-      });
+      })
     }
-  });
+  })
 
   // Verify Endpoint
-  app.get("/verify", async (req, res) => {
-    if (
-      req.body.phonenumber &&
-      req.body.name &&
-      req.body.code.length === 4 &&
-      req.body.password
-    ) {
-      const data = await client.verify
-        .services(process.env.SERVICE_ID)
-        .verificationChecks.create({
-          to: `+977${req.body.phonenumber}`,
-          code: req.body.code,
-        });
+  app.get('/verify', async (req, res) => {
+    if (req.body.phonenumber && req.body.name && req.body.code.length === 4 && req.body.password) {
+      const data = await client.verify.services(process.env.SERVICE_ID).verificationChecks.create({
+        to: `+977${req.body.phonenumber}`,
+        code: req.body.code,
+      })
 
-      if (data.status === "approved") {
+      if (data.status === 'approved') {
         if (await User.findOne({ phonenumber: req.body.phonenumber })) {
           res.status(400).send({
-            message:
-              req.body.phonenumber +
-              "has been already registered. Please try a new one.",
-          });
+            message: req.body.phonenumber + 'has been already registered. Please try a new one.',
+          })
         }
 
         const newUser = {
           name: req.body.name,
           hash: req.body.password,
           phonenumber: req.body.phonenumber,
-          location: "",
+          location: '',
           service: [],
-        };
+        }
 
         if (req.body.password) {
-          user.password = bcrypt.hashSync(userParam.password, 10);
+          user.password = bcrypt.hashSync(userParam.password, 10)
         }
 
         var user = await new User(newUser).save((error) => {
-          if (error)
-            res.send("We are having some problems. Please try again later.");
+          if (error) res.send('We are having some problems. Please try again later.')
           else {
             res.status(200).send({
-              message:
-                "Registration was Successful. You may now login to use our app.",
+              message: 'Registration was Successful. You may now login to use our app.',
               data,
-            });
+            })
           }
-        });
+        })
       } else {
         res.status(400).send({
-          message: "Wrong Code. Please try again.",
+          message: 'Wrong Code. Please try again.',
           phonenumber: req.body.phonenumber,
           data,
-        });
+        })
       }
     } else {
       res.status(400).send({
-        message: "Wrong Code. Please try again.",
+        message: 'Wrong Code. Please try again.',
         phonenumber: req.body.phonenumber,
         data,
-      });
+      })
     }
-  });
+  })
 
   //LOGIN
 
-  app.post("/authenticate", async (req, res) => {
-    const user = await User.findOne({ phonenumber: req.body.phonenumber });
+  app.post('/authenticate', async (req, res) => {
+    const user = await User.findOne({ phonenumber: req.body.phonenumber })
     if (user && bcrypt.compareSync(req.body.password, user.hash)) {
       const token = jwt.sign({ sub: user.id }, config.secret, {
-        expiresIn: "7d",
-      });
+        expiresIn: '7d',
+      })
       if (token) {
         res.status(200).send({
           ...user.toJSON(),
           token,
-        });
+        })
       }
     }
-  });
+  })
 
-  app.post("/sendMail", async(req, res) => {
+  app.post('/sendMail', async (req, res) => {
     var transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: 'swikarbh@gmail.com',
-        pass: 'dvanejxkqcpjdtue'
-      }
-    });
-    
+        pass: 'dvanejxkqcpjdtue',
+      },
+    })
+
+    var text = ''
+
     var mailOptions = {
       from: 'swikarbh@gmail.com',
-      to: 'swikar@innovatetech.co',
+      to: 'swikar6@gmail.com',
       subject: 'NEW EMAIL FROM GARAGE NEPAL USER',
-      text: 'That was easy!'
-    };
-    
-    transporter.sendMail(mailOptions, function(error, info){
+      text: `${req.body}`,
+    }
+
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         res.status(400).send({
-          response: error,
+          response: { error: true },
         })
       } else {
         res.status(200).send({
-          response: info.response,
+          response: { success: true },
         })
       }
-    });
+    })
   })
 
   // app.get(
@@ -223,4 +212,4 @@ module.exports = (app) => {
   //   const user = await req.user.save();
   //   res.send(user);
   // });
-};
+}
