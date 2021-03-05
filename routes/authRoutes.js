@@ -110,11 +110,13 @@ module.exports = (app) => {
 
     var text = ''
 
+    console.log('body', req.body)
+
     var mailOptions = {
       from: 'swikarbh@gmail.com',
       to: 'swikar6@gmail.com',
       subject: 'NEW EMAIL FROM GARAGE NEPAL USER',
-      text: `${req.body}`,
+      text: `${req.body.data}`,
     }
 
     transporter.sendMail(mailOptions, function (error, info) {
